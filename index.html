@@ -1,163 +1,110 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traductor rápido</title>
-<style>
-  :root{
-    --bg:#0b0f17;
-    --panel:#121826;
-    --line:#222b3d;
-    --accent:#5ee0ff;
-    --text:#e4eaf2;
-    --dim:#6b7890;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;background:var(--bg);}
-  body{
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    color:var(--text);
-    display:flex;align-items:center;justify-content:center;
-    min-height:100vh;padding:20px;
-  }
-  .card{
-    width:100%;max-width:640px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:18px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  }
-  .langs{
-    display:flex;align-items:center;justify-content:center;
-    gap:14px;margin-bottom:14px;
-    font-size:13px;font-weight:600;color:var(--dim);
-    letter-spacing:.03em;
-  }
-  .langs .on{color:var(--accent);}
-  .swap{
-    width:34px;height:34px;border-radius:50%;
-    border:1px solid var(--line);background:#0e1420;
-    color:var(--accent);font-size:15px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .15s, background .15s;
-  }
-  .swap:hover{background:#16202f;}
-  .swap:active{transform:scale(0.9) rotate(180deg);}
-  .pair{
-    display:flex;flex-direction:column;gap:1px;
-    border:1px solid var(--line);border-radius:10px;overflow:hidden;
-  }
-  textarea,.out{
-    width:100%;min-height:120px;
-    background:#0e1420;
-    border:none;outline:none;resize:none;
-    color:var(--text);font-size:16px;line-height:1.45;
-    padding:16px;font-family:inherit;
-  }
-  .out{white-space:pre-wrap;color:#cdd8e8; border-top: 1px solid var(--line);}
-  .out.empty{color:var(--dim);}
-  textarea::placeholder{color:var(--dim);}
-  .status{
-    text-align:center;font-size:11.5px;color:var(--dim);
-    margin-top:10px;height:14px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traductor Pro | Next Gen</title>
+    <style>
+        :root {
+            --bg: #0b0f17;
+            --glass: rgba(18, 24, 38, 0.7);
+            --accent: #5ee0ff;
+            --text: #e4eaf2;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
+        }
+        .card {
+            width: 90%; max-width: 500px;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 24px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        textarea, .out {
+            width: 100%; height: 120px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #222b3d;
+            color: white; padding: 15px; border-radius: 12px;
+            font-size: 16px; outline: none; margin-bottom: 10px;
+        }
+        .actions { display: flex; gap: 10px; margin-top: 10px; }
+        button {
+            background: #222b3d; border: none; color: var(--accent);
+            padding: 8px 15px; border-radius: 8px; cursor: pointer;
+            transition: 0.3s; font-size: 12px;
+        }
+        button:hover { background: var(--accent); color: var(--bg); }
+        .history { margin-top: 20px; font-size: 12px; color: #6b7890; }
+    </style>
 </head>
 <body>
 
 <div class="card">
-  <div class="langs">
-    <span id="labelA" class="on">Español</span>
-    <button class="swap" id="swapBtn" title="cambiar dirección">⇄</button>
-    <span id="labelB">English</span>
-  </div>
+    <h3 style="margin-top:0">Traductor Pro</h3>
+    <textarea id="input" placeholder="Escribe algo..."></textarea>
+    <div id="output" class="out">Traducción...</div>
+    
+    <div class="actions">
+        <button onclick="copiarTexto()">📋 Copiar</button>
+        <button onclick="reproducirVoz()">🔊 Escuchar</button>
+        <button onclick="cambiarIdioma()">⇄ Cambiar Idioma</button>
+    </div>
 
-  <div class="pair">
-    <textarea id="input" placeholder="Escribe aquí..." autofocus></textarea>
-    <div class="out empty" id="output">la traducción aparece aquí</div>
-  </div>
-
-  <div class="status" id="status"></div>
+    <div class="history" id="history">
+        <strong>Historial:</strong>
+        <ul id="historyList"></ul>
+    </div>
 </div>
 
 <script>
-const input = document.getElementById('input');
-const output = document.getElementById('output');
-const status = document.getElementById('status');
-const swapBtn = document.getElementById('swapBtn');
-const labelA = document.getElementById('labelA');
-const labelB = document.getElementById('labelB');
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    let esToEn = true;
 
-let esToEn = true;
-let debounceTimer = null;
-let lastRequestId = 0;
+    // Función de traducción
+    input.addEventListener('input', async () => {
+        const text = input.value;
+        if(text.length < 3) return;
+        
+        const lang = esToEn ? 'es|en' : 'en|es';
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lang}`);
+        const data = await res.json();
+        output.textContent = data.responseData.translatedText;
+        guardarEnHistorial(text, data.responseData.translatedText);
+    });
 
-function updateLabels(){
-  labelA.textContent = esToEn ? 'Español' : 'English';
-  labelB.textContent = esToEn ? 'English' : 'Español';
-  input.placeholder = esToEn ? 'Escribe aquí...' : 'Type here...';
-}
-
-async function runTranslation(){
-  const text = input.value.trim();
-  
-  if(!text){
-    output.classList.add('empty');
-    output.textContent = 'la traducción aparece aquí';
-    status.textContent = '';
-    return;
-  }
-
-  const requestId = ++lastRequestId;
-  status.textContent = 'traduciendo...';
-
-  const langpair = esToEn ? 'es|en' : 'en|es';
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`;
-
-  try{
-    const t0 = performance.now();
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('error ' + res.status);
-    const data = await res.json();
-
-    if(requestId !== lastRequestId) return;
-
-    if(data.responseStatus !== 200){
-      throw new Error(data.responseDetails || 'fallo de traducción');
+    // Acción: Copiar
+    function copiarTexto() {
+        navigator.clipboard.writeText(output.textContent);
+        alert("¡Texto copiado!");
     }
 
-    const translated = data.responseData.translatedText;
-    output.classList.remove('empty');
-    output.textContent = translated || '(sin resultado)';
-    const ms = Math.round(performance.now() - t0);
-    status.textContent = `${ms} ms`;
-  } catch(err){
-    if(requestId !== lastRequestId) return;
-    status.textContent = 'error: ' + err.message;
-  }
-}
+    // Acción: Voz (TTS)
+    function reproducirVoz() {
+        const msg = new SpeechSynthesisUtterance(output.textContent);
+        msg.lang = esToEn ? 'en-US' : 'es-ES';
+        window.speechSynthesis.speak(msg);
+    }
 
-input.addEventListener('input', () => {
-  if (input.value.trim() === '') {
-    output.textContent = 'la traducción aparece aquí';
-    output.classList.add('empty');
-  }
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(runTranslation, 400); // Aumenté un poco el tiempo para evitar exceso de llamadas
-});
+    // Acción: Historial
+    function guardarEnHistorial(original, trad) {
+        const list = document.getElementById('historyList');
+        const item = document.createElement('li');
+        item.textContent = `${original} -> ${trad}`;
+        list.prepend(item);
+        if(list.children.length > 3) list.lastChild.remove();
+    }
 
-swapBtn.addEventListener('click', () => {
-  esToEn = !esToEn;
-  updateLabels();
-  // Intercambiar contenido
-  const temp = input.value;
-  input.value = output.textContent !== 'la traducción aparece aquí' ? output.textContent : '';
-  // Si no había nada, limpiamos
-  if(temp === '') output.textContent = 'la traducción aparece aquí';
-  else runTranslation();
-});
+    function cambiarIdioma() {
+        esToEn = !esToEn;
+        alert("Modo cambiado");
+    }
 </script>
 
 </body>
