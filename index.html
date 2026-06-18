@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Traductor rápido</title>
 <style>
   :root{
@@ -26,6 +27,7 @@
     border:1px solid var(--line);
     border-radius:14px;
     padding:18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
   }
   .langs{
     display:flex;align-items:center;justify-content:center;
@@ -48,18 +50,18 @@
     border:1px solid var(--line);border-radius:10px;overflow:hidden;
   }
   textarea,.out{
-    width:100%;min-height:110px;
+    width:100%;min-height:120px;
     background:#0e1420;
     border:none;outline:none;resize:none;
     color:var(--text);font-size:16px;line-height:1.45;
-    padding:14px;font-family:inherit;
+    padding:16px;font-family:inherit;
   }
-  .out{white-space:pre-wrap;color:#cdd8e8;}
+  .out{white-space:pre-wrap;color:#cdd8e8; border-top: 1px solid var(--line);}
   .out.empty{color:var(--dim);}
   textarea::placeholder{color:var(--dim);}
   .status{
     text-align:center;font-size:11.5px;color:var(--dim);
-    margin-top:8px;height:14px;
+    margin-top:10px;height:14px;
   }
 </style>
 </head>
@@ -88,7 +90,6 @@ const swapBtn = document.getElementById('swapBtn');
 const labelA = document.getElementById('labelA');
 const labelB = document.getElementById('labelB');
 
-// direction: true = ES -> EN, false = EN -> ES
 let esToEn = true;
 let debounceTimer = null;
 let lastRequestId = 0;
@@ -101,6 +102,7 @@ function updateLabels(){
 
 async function runTranslation(){
   const text = input.value.trim();
+  
   if(!text){
     output.classList.add('empty');
     output.textContent = 'la traducción aparece aquí';
@@ -112,7 +114,7 @@ async function runTranslation(){
   status.textContent = 'traduciendo...';
 
   const langpair = esToEn ? 'es|en' : 'en|es';
-  const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=' + langpair;
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`;
 
   try{
     const t0 = performance.now();
@@ -120,7 +122,6 @@ async function runTranslation(){
     if(!res.ok) throw new Error('error ' + res.status);
     const data = await res.json();
 
-    // si el usuario ya escribió algo nuevo mientras esperábamos, ignoramos esta respuesta vieja
     if(requestId !== lastRequestId) return;
 
     if(data.responseStatus !== 200){
@@ -131,28 +132,32 @@ async function runTranslation(){
     output.classList.remove('empty');
     output.textContent = translated || '(sin resultado)';
     const ms = Math.round(performance.now() - t0);
-    status.textContent = ms + ' ms';
-  }catch(err){
+    status.textContent = `${ms} ms`;
+  } catch(err){
     if(requestId !== lastRequestId) return;
     status.textContent = 'error: ' + err.message;
   }
 }
 
 input.addEventListener('input', () => {
+  if (input.value.trim() === '') {
+    output.textContent = 'la traducción aparece aquí';
+    output.classList.add('empty');
+  }
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(runTranslation, 200);
+  debounceTimer = setTimeout(runTranslation, 400); // Aumenté un poco el tiempo para evitar exceso de llamadas
 });
 
 swapBtn.addEventListener('click', () => {
   esToEn = !esToEn;
   updateLabels();
-  if(!output.classList.contains('empty')){
-    input.value = output.textContent;
-    runTranslation();
-  }
+  // Intercambiar contenido
+  const temp = input.value;
+  input.value = output.textContent !== 'la traducción aparece aquí' ? output.textContent : '';
+  // Si no había nada, limpiamos
+  if(temp === '') output.textContent = 'la traducción aparece aquí';
+  else runTranslation();
 });
-
-updateLabels();
 </script>
 
 </body>
