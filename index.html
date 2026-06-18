@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Traductor rápido</title>
+<style>
+  :root{
+    --bg:#0b0f17;
+    --panel:#121826;
+    --line:#222b3d;
+    --accent:#5ee0ff;
+    --text:#e4eaf2;
+    --dim:#6b7890;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--text);
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:20px;
+  }
+  .card{
+    width:100%;max-width:640px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+  }
+  .langs{
+    display:flex;align-items:center;justify-content:center;
+    gap:14px;margin-bottom:14px;
+    font-size:13px;font-weight:600;color:var(--dim);
+    letter-spacing:.03em;
+  }
+  .langs .on{color:var(--accent);}
+  .swap{
+    width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--line);background:#0e1420;
+    color:var(--accent);font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .15s, background .15s;
+  }
+  .swap:hover{background:#16202f;}
+  .swap:active{transform:scale(0.9) rotate(180deg);}
+  .pair{
+    display:flex;flex-direction:column;gap:1px;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  }
+  textarea,.out{
+    width:100%;min-height:110px;
+    background:#0e1420;
+    border:none;outline:none;resize:none;
+    color:var(--text);font-size:16px;line-height:1.45;
+    padding:14px;font-family:inherit;
+  }
+  .out{white-space:pre-wrap;color:#cdd8e8;}
+  .out.empty{color:var(--dim);}
+  textarea::placeholder{color:var(--dim);}
+  .status{
+    text-align:center;font-size:11.5px;color:var(--dim);
+    margin-top:8px;height:14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="langs">
+    <span id="labelA" class="on">Español</span>
+    <button class="swap" id="swapBtn" title="cambiar dirección">⇄</button>
+    <span id="labelB">English</span>
+  </div>
+
+  <div class="pair">
+    <textarea id="input" placeholder="Escribe aquí..." autofocus></textarea>
+    <div class="out empty" id="output">la traducción aparece aquí</div>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const input = document.getElementById('input');
+const output = document.getElementById('output');
+const status = document.getElementById('status');
+const swapBtn = document.getElementById('swapBtn');
+const labelA = document.getElementById('labelA');
+const labelB = document.getElementById('labelB');
+
+// direction: true = ES -> EN, false = EN -> ES
+let esToEn = true;
+let controller = null;
+let debounceTimer = null;
+
+function updateLabels(){
+  labelA.textContent = esToEn ? 'Español' : 'English';
+  labelB.textContent = esToEn ? 'English' : 'Español';
+  input.placeholder = esToEn ? 'Escribe aquí...' : 'Type here...';
+}
+
+async function runTranslation(){
+  const text = input.value.trim();
+  if(!text){
+    output.classList.add('empty');
+    output.textContent = 'la traducción aparece aquí';
+    status.textContent = '';
+    return;
+  }
+
+  if(controller) controller.abort();
+  controller = new AbortController();
+
+  status.textContent = 'traduciendo...';
+
+  const sys = esToEn
+    ? "Translate Spanish to English. Reply with ONLY the translation, nothing else."
+    : "Translate English to Spanish. Reply with ONLY the translation, nothing else.";
+
+  try{
+    const t0 = performance.now();
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 400,
+        system: sys,
+        messages: [{role:"user", content: text}]
+      })
+    });
+    if(!res.ok) throw new Error('error ' + res.status);
+    const data = await res.json();
+    const translated = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim();
+
+    output.classList.remove('empty');
+    output.textContent = translated || '(sin resultado)';
+    const ms = Math.round(performance.now() - t0);
+    status.textContent = ms + ' ms';
+  }catch(err){
+    if(err.name === 'AbortError') return;
+    status.textContent = 'error: ' + err.message;
+  }
+}
+
+input.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runTranslation, 250);
+});
+
+swapBtn.addEventListener('click', () => {
+  esToEn = !esToEn;
+  updateLabels();
+  // si ya hay una traducción, la pasamos al input y traducimos de nuevo en la otra dirección
+  if(!output.classList.contains('empty')){
+    input.value = output.textContent;
+    runTranslation();
+  }
+});
+
+updateLabels();
+</script>
+
+</body>
+</html>
