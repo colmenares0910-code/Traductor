@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root {
     --bg: #0b0f17;
@@ -127,7 +128,7 @@
     font-family: inherit; line-height: 1.5;
     transition: border-color 0.2s ease;
   }
-  textarea { padding-right: 46px; }
+  textarea { padding-right: 80px; }
   textarea:focus { border-color: var(--accent); }
 
   .mic-inline {
@@ -147,6 +148,26 @@
     0%,100% { box-shadow: 0 0 0 0 rgba(255,107,129,0.4); }
     50% { box-shadow: 0 0 0 6px rgba(255,107,129,0); }
   }
+
+  .camera-inline {
+    position: absolute; top: 10px; right: 48px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    color: var(--muted); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 13px; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .camera-inline:hover { color: var(--accent); border-color: var(--accent); }
+  .camera-inline:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .ocr-status {
+    display: none; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--accent); margin-top: 6px;
+  }
+  .ocr-status.show { display: flex; }
+  .ocr-bar-wrap {
+    flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+  }
+  .ocr-bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.2s ease; }
 
   .out {
     position: relative; white-space: pre-wrap; word-break: break-word;
@@ -295,7 +316,14 @@
     </div>
     <div class="textarea-wrap">
       <textarea id="input" placeholder="Escribe o dicta algo para traducir..." maxlength="500"></textarea>
+      <button class="camera-inline" id="cameraInline" title="Traducir texto de una foto" aria-label="Traducir texto de una foto">📷</button>
       <button class="mic-inline" id="micInline" title="Dictar por voz" aria-label="Dictar por voz">🎤</button>
+    </div>
+    <input type="file" id="ocrFileInput" accept="image/*" capture="environment" style="display:none;">
+    <div class="ocr-status" id="ocrStatus">
+      <span class="spinner"></span>
+      <span id="ocrStatusText">Leyendo imagen...</span>
+      <div class="ocr-bar-wrap"><div class="ocr-bar" id="ocrBar"></div></div>
     </div>
     <p class="no-mic-note" id="noMicNote" style="display:none;">Tu navegador no soporta dictado por voz (probá con Chrome o Edge).</p>
 
@@ -351,6 +379,10 @@
     <div class="conv-transcript" id="convTranscript">
       <p class="conv-empty" id="convEmptyHint">Tocá un micrófono y empezá a hablar.</p>
     </div>
+    <div class="actions">
+      <button class="action" id="shareConvBtn" onclick="compartirConversacion()" disabled>📤 Compartir charla</button>
+      <button class="action" id="clearConvBtn" onclick="limpiarConversacion()" disabled>🗑️ Limpiar charla</button>
+    </div>
   </div>
 </div>
 
@@ -391,6 +423,16 @@
     th: ['Tailandés', 'th-TH'],
   };
 
+  // Tesseract.js usa sus propios códigos de idioma (paquetes de datos entrenados),
+  // distintos a los que usamos para traducir. Este mapeo conecta ambos mundos.
+  const TESSERACT_LANG = {
+    es: 'spa', en: 'eng', pt: 'por', fr: 'fra', de: 'deu', it: 'ita',
+    nl: 'nld', ru: 'rus', zh: 'chi_sim', ja: 'jpn', ko: 'kor', ar: 'ara',
+    hi: 'hin', tr: 'tur', pl: 'pol', sv: 'swe', da: 'dan', fi: 'fin',
+    el: 'ell', cs: 'ces', he: 'heb', hu: 'hun', uk: 'ukr', id: 'ind',
+    vi: 'vie', fa: 'fas', sk: 'slk', bg: 'bul', ga: 'gle', th: 'tha',
+  };
+
   // ---------- Elementos ----------
   const offlineBanner = document.getElementById('offlineBanner');
   const tabText = document.getElementById('tabText');
@@ -411,6 +453,11 @@
   const sourceNote = document.getElementById('sourceNote');
   const micInline = document.getElementById('micInline');
   const noMicNote = document.getElementById('noMicNote');
+  const cameraInline = document.getElementById('cameraInline');
+  const ocrFileInput = document.getElementById('ocrFileInput');
+  const ocrStatus = document.getElementById('ocrStatus');
+  const ocrStatusText = document.getElementById('ocrStatusText');
+  const ocrBar = document.getElementById('ocrBar');
 
   const convLangA = document.getElementById('convLangA');
   const convLangB = document.getElementById('convLangB');
@@ -423,6 +470,9 @@
   const convTranscript = document.getElementById('convTranscript');
   const convEmptyHint = document.getElementById('convEmptyHint');
   const noMicNoteConv = document.getElementById('noMicNoteConv');
+  const shareConvBtn = document.getElementById('shareConvBtn');
+  const clearConvBtn = document.getElementById('clearConvBtn');
+  let convExchanges = [];
 
   const MAX_CHARS = 500;
   const DEBOUNCE_MS = 600;
@@ -797,6 +847,70 @@
     });
   }
 
+  // ---------- OCR: traducir texto de una foto ----------
+  function configurarOcr() {
+    if (typeof Tesseract === 'undefined') {
+      cameraInline.disabled = true;
+      cameraInline.title = 'OCR no disponible (no cargó la librería)';
+      return;
+    }
+
+    cameraInline.addEventListener('click', () => ocrFileInput.click());
+
+    ocrFileInput.addEventListener('change', async () => {
+      const file = ocrFileInput.files[0];
+      if (!file) return;
+
+      const tessLang = TESSERACT_LANG[fromSelect.value] || 'eng';
+
+      cameraInline.disabled = true;
+      micInline.disabled = true;
+      ocrStatus.classList.add('show');
+      ocrStatusText.textContent = 'Preparando lectura...';
+      ocrBar.style.width = '0%';
+
+      try {
+        const result = await Tesseract.recognize(file, tessLang, {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              ocrStatusText.textContent = `Leyendo imagen... ${Math.round(m.progress * 100)}%`;
+              ocrBar.style.width = `${Math.round(m.progress * 100)}%`;
+            } else if (m.status) {
+              ocrStatusText.textContent = traducirEstadoTesseract(m.status);
+            }
+          },
+        });
+
+        const texto = (result?.data?.text || '').trim();
+
+        if (!texto) {
+          mostrarError('No se detectó texto legible en la imagen. Probá con otra foto, más nítida.');
+        } else {
+          input.value = texto.slice(0, MAX_CHARS);
+          actualizarContador();
+          traducir(input.value.trim());
+        }
+      } catch {
+        mostrarError('No se pudo leer la imagen. Probá de nuevo.');
+      } finally {
+        ocrStatus.classList.remove('show');
+        cameraInline.disabled = false;
+        micInline.disabled = !speechSupported ? true : false;
+        ocrFileInput.value = '';
+      }
+    });
+  }
+
+  function traducirEstadoTesseract(status) {
+    const mapa = {
+      'loading tesseract core': 'Cargando motor de lectura...',
+      'initializing tesseract': 'Iniciando...',
+      'loading language traineddata': 'Descargando paquete de idioma...',
+      'initializing api': 'Preparando...',
+    };
+    return mapa[status] || 'Procesando...';
+  }
+
   // ---------- Modo conversación ----------
   function detenerConvRecognition() {
     if (convRecognition) {
@@ -810,7 +924,6 @@
 
   function agregarBurbuja(original, traducido, labelOriginal, labelTraducido, lado) {
     convEmptyHint.style.display = 'none';
-    const wrap = document.createElement('div');
 
     const b1 = document.createElement('div');
     b1.className = `conv-bubble ${lado === 'A' ? 'left' : 'right'}`;
@@ -823,6 +936,36 @@
     convTranscript.appendChild(b1);
     convTranscript.appendChild(b2);
     convTranscript.scrollTop = convTranscript.scrollHeight;
+
+    convExchanges.push({ original, traducido, labelOriginal, labelTraducido });
+    shareConvBtn.disabled = false;
+    clearConvBtn.disabled = false;
+  }
+
+  function compartirConversacion() {
+    if (!convExchanges.length) return;
+    const texto = convExchanges
+      .map((e) => `${e.labelOriginal}: ${e.original}\n${e.labelTraducido}: ${e.traducido}`)
+      .join('\n\n');
+
+    if (navigator.share) {
+      navigator.share({ title: 'Conversación traducida — Traductor Pro', text: texto }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(texto).then(() => {
+        const original = shareConvBtn.textContent;
+        shareConvBtn.textContent = '✅ Copiada';
+        setTimeout(() => { shareConvBtn.textContent = original; }, 1500);
+      });
+    }
+  }
+
+  function limpiarConversacion() {
+    convExchanges = [];
+    convTranscript.innerHTML = '';
+    convTranscript.appendChild(convEmptyHint);
+    convEmptyHint.style.display = 'block';
+    shareConvBtn.disabled = true;
+    clearConvBtn.disabled = true;
   }
 
   async function manejarHablaConversacion(lado) {
@@ -931,6 +1074,7 @@
   actualizarContador();
   actualizarEstadoConexion();
   configurarDictadoTexto();
+  configurarOcr();
   configurarModoConversacion();
 </script>
 </body>
