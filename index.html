@@ -315,7 +315,7 @@
       <span class="charcount" id="charcount">0 / 500</span>
     </div>
     <div class="textarea-wrap">
-      <textarea id="input" placeholder="Escribe o dicta algo para traducir..." maxlength="500"></textarea>
+      <textarea id="input" placeholder="Escribe, dicta, o pegá una imagen (Ctrl+V)..." maxlength="500"></textarea>
       <button class="camera-inline" id="cameraInline" title="Traducir texto de una foto" aria-label="Traducir texto de una foto">📷</button>
       <button class="mic-inline" id="micInline" title="Dictar por voz" aria-label="Dictar por voz">🎤</button>
     </div>
@@ -848,6 +848,47 @@
   }
 
   // ---------- OCR: traducir texto de una foto ----------
+  async function procesarImagenOcr(file) {
+    if (!file || typeof Tesseract === 'undefined') return;
+
+    const tessLang = TESSERACT_LANG[fromSelect.value] || 'eng';
+
+    cameraInline.disabled = true;
+    micInline.disabled = true;
+    ocrStatus.classList.add('show');
+    ocrStatusText.textContent = 'Preparando lectura...';
+    ocrBar.style.width = '0%';
+
+    try {
+      const result = await Tesseract.recognize(file, tessLang, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            ocrStatusText.textContent = `Leyendo imagen... ${Math.round(m.progress * 100)}%`;
+            ocrBar.style.width = `${Math.round(m.progress * 100)}%`;
+          } else if (m.status) {
+            ocrStatusText.textContent = traducirEstadoTesseract(m.status);
+          }
+        },
+      });
+
+      const texto = (result?.data?.text || '').trim();
+
+      if (!texto) {
+        mostrarError('No se detectó texto legible en la imagen. Probá con otra foto, más nítida.');
+      } else {
+        input.value = texto.slice(0, MAX_CHARS);
+        actualizarContador();
+        traducir(input.value.trim());
+      }
+    } catch {
+      mostrarError('No se pudo leer la imagen. Probá de nuevo.');
+    } finally {
+      ocrStatus.classList.remove('show');
+      cameraInline.disabled = false;
+      micInline.disabled = !speechSupported;
+    }
+  }
+
   function configurarOcr() {
     if (typeof Tesseract === 'undefined') {
       cameraInline.disabled = true;
@@ -857,47 +898,26 @@
 
     cameraInline.addEventListener('click', () => ocrFileInput.click());
 
-    ocrFileInput.addEventListener('change', async () => {
+    ocrFileInput.addEventListener('change', () => {
       const file = ocrFileInput.files[0];
-      if (!file) return;
+      ocrFileInput.value = '';
+      if (file) procesarImagenOcr(file);
+    });
 
-      const tessLang = TESSERACT_LANG[fromSelect.value] || 'eng';
+    // Pegar una imagen (Ctrl+V) directo en el cuadro de texto
+    input.addEventListener('paste', (event) => {
+      const items = event.clipboardData && event.clipboardData.items;
+      if (!items) return;
 
-      cameraInline.disabled = true;
-      micInline.disabled = true;
-      ocrStatus.classList.add('show');
-      ocrStatusText.textContent = 'Preparando lectura...';
-      ocrBar.style.width = '0%';
-
-      try {
-        const result = await Tesseract.recognize(file, tessLang, {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              ocrStatusText.textContent = `Leyendo imagen... ${Math.round(m.progress * 100)}%`;
-              ocrBar.style.width = `${Math.round(m.progress * 100)}%`;
-            } else if (m.status) {
-              ocrStatusText.textContent = traducirEstadoTesseract(m.status);
-            }
-          },
-        });
-
-        const texto = (result?.data?.text || '').trim();
-
-        if (!texto) {
-          mostrarError('No se detectó texto legible en la imagen. Probá con otra foto, más nítida.');
-        } else {
-          input.value = texto.slice(0, MAX_CHARS);
-          actualizarContador();
-          traducir(input.value.trim());
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          event.preventDefault();
+          const file = item.getAsFile();
+          if (file) procesarImagenOcr(file);
+          return;
         }
-      } catch {
-        mostrarError('No se pudo leer la imagen. Probá de nuevo.');
-      } finally {
-        ocrStatus.classList.remove('show');
-        cameraInline.disabled = false;
-        micInline.disabled = !speechSupported ? true : false;
-        ocrFileInput.value = '';
       }
+      // si no hay imagen en el portapapeles, se deja el comportamiento normal de pegar texto
     });
   }
 
