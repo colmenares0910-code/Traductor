@@ -24,7 +24,7 @@
   body {
     background: var(--bg);
     background-image: radial-gradient(circle at 20% 10%, rgba(94,224,255,0.08), transparent 40%),
-                       radial-gradient(circle at 80% 90%, rgba(94,224,255,0.05), transparent 45%);
+                      radial-gradient(circle at 80% 90%, rgba(94,224,255,0.05), transparent 45%);
     color: var(--text);
     font-family: 'Inter', system-ui, sans-serif;
     display: flex; justify-content: center; align-items: center;
@@ -169,7 +169,7 @@
 <div class="card">
   <div class="header-row">
     <h3>Traductor Pro</h3>
-    <span class="badge" id="badge">LibreTranslate</span>
+    <span class="badge" id="badge">Traductor AI</span>
   </div>
 
   <div class="lang-row">
@@ -209,14 +209,12 @@
 </div>
 
 <script>
-  // Mirrors públicos de LibreTranslate, sin API key. Si el primero falla
-  // (caído, saturado, CORS), se reintenta automáticamente con el siguiente.
+  // Servidores de traducción configurados.
   const MIRRORS = [
     'https://translate.argosopentech.com/translate',
     'https://translate.terraprint.co/translate',
   ];
 
-  // code: [nombre visible, locale de voz]
   const LANGUAGES = {
     es: ['Español', 'es-ES'],
     en: ['Inglés', 'en-US'],
@@ -295,7 +293,7 @@
         if (LANGUAGES[p.from]) from = p.from;
         if (LANGUAGES[p.to]) to = p.to;
       }
-    } catch { /* sin prefs guardadas */ }
+    } catch { }
     fromSelect.value = from;
     toSelect.value = to;
   }
@@ -303,7 +301,7 @@
   function guardarPrefs() {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ from: fromSelect.value, to: toSelect.value }));
-    } catch { /* almacenamiento no disponible */ }
+    } catch { }
   }
 
   function cargarHistorial() {
@@ -319,7 +317,7 @@
   function guardarHistorialEnStorage() {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    } catch { /* almacenamiento no disponible, seguimos solo en memoria */ }
+    } catch { }
   }
 
   function renderHistorial() {
@@ -402,7 +400,7 @@
       try {
         const errData = await res.json();
         detail = errData.error || '';
-      } catch { /* respuesta no era JSON */ }
+      } catch { }
       throw new Error(detail || `Error HTTP ${res.status}`);
     }
 
@@ -437,32 +435,28 @@
         );
         output.classList.remove('placeholder', 'error');
         output.textContent = translated;
-        sourceNote.textContent = i === 0 ? '' : 'Servidor de respaldo en uso (el principal no respondió).';
+        sourceNote.textContent = i === 0 ? '' : 'Servidor de respaldo en uso.';
         guardarEnHistorial(text, translated);
         return;
       } catch (err) {
         if (err.name === 'AbortError') return;
         lastError = err;
-        // probamos el siguiente mirror automáticamente
       }
     }
 
-    mostrarError(`No se pudo traducir: ${lastError ? lastError.message : 'todos los servidores fallaron'}. Probá de nuevo en un momento.`);
+    mostrarError(`No se pudo traducir: ${lastError ? lastError.message : 'Error de conexión'}.`);
   }
 
   input.addEventListener('input', () => {
     actualizarContador();
     const text = input.value.trim();
-
     clearTimeout(debounceTimer);
-
     if (text.length === 0) {
       if (activeController) activeController.abort();
       mostrarPlaceholder();
       return;
     }
     if (text.length < 2) return;
-
     debounceTimer = setTimeout(() => traducir(text), DEBOUNCE_MS);
   });
 
