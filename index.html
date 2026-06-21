@@ -32,7 +32,7 @@
   }
 
   .card {
-    width: 100%; max-width: 520px;
+    width: 100%; max-width: 560px;
     background: var(--glass);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255,255,255,0.1);
@@ -40,27 +40,34 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
-  .header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 18px;
-  }
-
   h3 {
-    margin: 0; font-family: 'DM Serif Display', serif;
+    margin: 0 0 18px 0; font-family: 'DM Serif Display', serif;
     font-weight: 400; font-size: 22px; letter-spacing: 0.2px;
   }
 
-  .lang-pill {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-    border-radius: 999px; padding: 6px 8px 6px 14px;
-    font-size: 12px; color: var(--muted); user-select: none;
+  .lang-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
   }
 
-  .lang-pill b { color: var(--text); font-weight: 600; }
+  .lang-select-wrap { flex: 1; position: relative; }
+
+  select.lang-select {
+    width: 100%; appearance: none;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 30px 10px 12px; border-radius: 10px;
+    font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
+    transition: border-color 0.2s ease;
+  }
+  select.lang-select:focus { border-color: var(--accent); }
+  select.lang-select option { background: #121826; color: var(--text); }
+
+  .lang-select-wrap::after {
+    content: '▾'; position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%); color: var(--muted); font-size: 11px; pointer-events: none;
+  }
 
   .swap-btn {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
     background: var(--accent-dim); border: none; color: var(--accent);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: transform 0.35s ease, background 0.2s ease;
@@ -137,6 +144,7 @@
   ul#historyList li:hover { border-color: var(--accent); }
   ul#historyList li .orig { color: var(--text); }
   ul#historyList li .arrow { color: var(--accent); flex-shrink: 0; }
+  ul#historyList li .pair { color: var(--muted); font-size: 10px; margin-left: auto; flex-shrink: 0; white-space: nowrap; }
   .empty-hint { font-size: 12px; color: var(--muted); font-style: italic; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -146,11 +154,15 @@
 </head>
 <body>
 <div class="card">
-  <div class="header">
-    <h3>Traductor Pro</h3>
-    <div class="lang-pill" id="langPill" role="status" aria-live="polite">
-      <span><b id="langFrom">ES</b> → <b id="langTo">EN</b></span>
-      <button class="swap-btn" id="swapBtn" title="Cambiar dirección" aria-label="Cambiar dirección de traducción">⇄</button>
+  <h3>Traductor Pro</h3>
+
+  <div class="lang-row">
+    <div class="lang-select-wrap">
+      <select class="lang-select" id="fromSelect" aria-label="Idioma de origen"></select>
+    </div>
+    <button class="swap-btn" id="swapBtn" title="Cambiar dirección" aria-label="Cambiar dirección de traducción">⇄</button>
+    <div class="lang-select-wrap">
+      <select class="lang-select" id="toSelect" aria-label="Idioma de destino"></select>
     </div>
   </div>
 
@@ -180,11 +192,65 @@
 </div>
 
 <script>
+  const LANGUAGES = {
+    es: ['Español', 'es-ES'],
+    en: ['Inglés', 'en-US'],
+    pt: ['Portugués', 'pt-PT'],
+    fr: ['Francés', 'fr-FR'],
+    de: ['Alemán', 'de-DE'],
+    it: ['Italiano', 'it-IT'],
+    nl: ['Holandés', 'nl-NL'],
+    ru: ['Ruso', 'ru-RU'],
+    zh: ['Chino', 'zh-CN'],
+    ja: ['Japonés', 'ja-JP'],
+    ko: ['Coreano', 'ko-KR'],
+    ar: ['Árabe', 'ar-SA'],
+    hi: ['Hindi', 'hi-IN'],
+    tr: ['Turco', 'tr-TR'],
+    pl: ['Polaco', 'pl-PL'],
+    sv: ['Sueco', 'sv-SE'],
+    no: ['Noruego', 'nb-NO'],
+    da: ['Danés', 'da-DK'],
+    fi: ['Finlandés', 'fi-FI'],
+    el: ['Griego', 'el-GR'],
+    cs: ['Checo', 'cs-CZ'],
+    ro: ['Rumano', 'ro-RO'],
+    hu: ['Húngaro', 'hu-HU'],
+    uk: ['Ucraniano', 'uk-UA'],
+    he: ['Hebreo', 'he-IL'],
+    th: ['Tailandés', 'th-TH'],
+    vi: ['Vietnamita', 'vi-VN'],
+    id: ['Indonesio', 'id-ID'],
+    ms: ['Malayo', 'ms-MY'],
+    bg: ['Búlgaro', 'bg-BG'],
+    hr: ['Croata', 'hr-HR'],
+    sk: ['Eslovaco', 'sk-SK'],
+    sr: ['Serbio', 'sr-RS'],
+    lt: ['Lituano', 'lt-LT'],
+    lv: ['Letón', 'lv-LV'],
+    et: ['Estonio', 'et-EE'],
+    fa: ['Persa', 'fa-IR'],
+    bn: ['Bengalí', 'bn-IN'],
+    ur: ['Urdu', 'ur-PK'],
+    sw: ['Swahili', 'sw-KE'],
+    ca: ['Catalán', 'ca-ES'],
+    gl: ['Gallego', 'gl-ES'],
+    eu: ['Euskera', 'eu-ES'],
+    af: ['Afrikáans', 'af-ZA'],
+    sq: ['Albanés', 'sq-AL'],
+    az: ['Azerbaiyano', 'az-AZ'],
+    bs: ['Bosnio', 'bs-BA'],
+    is: ['Islandés', 'is-IS'],
+    ka: ['Georgiano', 'ka-GE'],
+    sl: ['Esloveno', 'sl-SI'],
+    tl: ['Filipino', 'fil-PH'],
+  };
+
   const input = document.getElementById('input');
   const output = document.getElementById('output');
   const charcount = document.getElementById('charcount');
-  const langFrom = document.getElementById('langFrom');
-  const langTo = document.getElementById('langTo');
+  const fromSelect = document.getElementById('fromSelect');
+  const toSelect = document.getElementById('toSelect');
   const swapBtn = document.getElementById('swapBtn');
   const copyBtn = document.getElementById('copyBtn');
   const voiceBtn = document.getElementById('voiceBtn');
@@ -194,14 +260,46 @@
   const MAX_CHARS = 500;
   const DEBOUNCE_MS = 500;
   const HISTORY_KEY = 'traductorPro_historial';
+  const PREFS_KEY = 'traductorPro_prefs';
   const MAX_HISTORY = 8;
 
-  let esToEn = true;
   let debounceTimer = null;
   let activeController = null;
   let history = [];
 
-  // ---------- Persistencia de historial ----------
+  function poblarSelects() {
+    const codes = Object.keys(LANGUAGES);
+    [fromSelect, toSelect].forEach((sel) => {
+      sel.innerHTML = '';
+      codes.forEach((code) => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = LANGUAGES[code][0];
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function cargarPrefs() {
+    let from = 'es', to = 'en';
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (LANGUAGES[p.from]) from = p.from;
+        if (LANGUAGES[p.to]) to = p.to;
+      }
+    } catch { /* sin prefs guardadas */ }
+    fromSelect.value = from;
+    toSelect.value = to;
+  }
+
+  function guardarPrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ from: fromSelect.value, to: toSelect.value }));
+    } catch { /* almacenamiento no disponible */ }
+  }
+
   function cargarHistorial() {
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
@@ -223,12 +321,15 @@
     emptyHint.style.display = history.length ? 'none' : 'block';
     history.forEach((entry) => {
       const li = document.createElement('li');
-      li.innerHTML = `<span class="orig">${escapeHtml(entry.original)}</span><span class="arrow">→</span><span>${escapeHtml(entry.traducido)}</span>`;
+      const fromName = LANGUAGES[entry.from] ? LANGUAGES[entry.from][0] : entry.from;
+      const toName = LANGUAGES[entry.to] ? LANGUAGES[entry.to][0] : entry.to;
+      li.innerHTML = `<span class="orig">${escapeHtml(entry.original)}</span><span class="arrow">→</span><span>${escapeHtml(entry.traducido)}</span><span class="pair">${fromName} → ${toName}</span>`;
       li.title = 'Click para volver a cargar este texto';
       li.addEventListener('click', () => {
         input.value = entry.original;
-        esToEn = entry.esToEn;
-        actualizarPill();
+        fromSelect.value = entry.from;
+        toSelect.value = entry.to;
+        guardarPrefs();
         output.textContent = entry.traducido;
         output.classList.remove('placeholder', 'error');
         actualizarContador();
@@ -238,7 +339,7 @@
   }
 
   function guardarEnHistorial(original, traducido) {
-    history.unshift({ original, traducido, esToEn });
+    history.unshift({ original, traducido, from: fromSelect.value, to: toSelect.value });
     history = history.slice(0, MAX_HISTORY);
     guardarHistorialEnStorage();
     renderHistorial();
@@ -256,16 +357,10 @@
     return div.innerHTML;
   }
 
-  // ---------- Traducción ----------
   function actualizarContador() {
     const len = input.value.length;
     charcount.textContent = `${len} / ${MAX_CHARS}`;
     charcount.classList.toggle('warn', len >= MAX_CHARS);
-  }
-
-  function actualizarPill() {
-    langFrom.textContent = esToEn ? 'ES' : 'EN';
-    langTo.textContent = esToEn ? 'EN' : 'ES';
   }
 
   function mostrarCargando() {
@@ -286,11 +381,17 @@
   }
 
   async function traducir(text) {
+    if (fromSelect.value === toSelect.value) {
+      output.classList.remove('placeholder', 'error');
+      output.textContent = text;
+      return;
+    }
+
     if (activeController) activeController.abort();
     activeController = new AbortController();
 
     mostrarCargando();
-    const lang = esToEn ? 'es|en' : 'en|es';
+    const lang = `${fromSelect.value}|${toSelect.value}`;
 
     try {
       const res = await fetch(
@@ -336,7 +437,14 @@
     debounceTimer = setTimeout(() => traducir(text), DEBOUNCE_MS);
   });
 
-  // ---------- Acciones ----------
+  [fromSelect, toSelect].forEach((sel) => {
+    sel.addEventListener('change', () => {
+      guardarPrefs();
+      const text = input.value.trim();
+      if (text.length >= 2) traducir(text);
+    });
+  });
+
   function copiarTexto() {
     if (output.classList.contains('placeholder') || output.classList.contains('error')) return;
     navigator.clipboard.writeText(output.textContent).then(() => {
@@ -354,7 +462,8 @@
     if (output.classList.contains('placeholder') || output.classList.contains('error')) return;
     window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(output.textContent);
-    msg.lang = esToEn ? 'en-US' : 'es-ES';
+    const locale = LANGUAGES[toSelect.value] ? LANGUAGES[toSelect.value][1] : 'en-US';
+    msg.lang = locale;
     voiceBtn.disabled = true;
     msg.onend = () => { voiceBtn.disabled = false; };
     msg.onerror = () => { voiceBtn.disabled = false; };
@@ -370,11 +479,13 @@
   }
 
   swapBtn.addEventListener('click', () => {
-    esToEn = !esToEn;
-    actualizarPill();
+    const prevFrom = fromSelect.value;
+    const prevTo = toSelect.value;
+    fromSelect.value = prevTo;
+    toSelect.value = prevFrom;
+    guardarPrefs();
     swapBtn.classList.toggle('spin');
 
-    // Si ya hay traducción, invertimos texto <-> traducción para seguir trabajando
     const currentOutput = output.textContent;
     const hasValidOutput = !output.classList.contains('placeholder') && !output.classList.contains('error');
 
@@ -385,10 +496,10 @@
     }
   });
 
-  // ---------- Init ----------
+  poblarSelects();
+  cargarPrefs();
   cargarHistorial();
   actualizarContador();
-  actualizarPill();
 </script>
 </body>
 </html>
