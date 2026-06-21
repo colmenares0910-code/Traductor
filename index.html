@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Traductor Pro | Next Gen</title>
+<title>Traductor Local | Offline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -15,512 +15,98 @@
     --accent-dim: rgba(94, 224, 255, 0.15);
     --text: #e4eaf2;
     --muted: #6b7890;
-    --danger: #ff6b81;
     --border: #222b3d;
   }
-
   * { box-sizing: border-box; }
-
   body {
     background: var(--bg);
-    background-image: radial-gradient(circle at 20% 10%, rgba(94,224,255,0.08), transparent 40%),
-                       radial-gradient(circle at 80% 90%, rgba(94,224,255,0.05), transparent 45%);
     color: var(--text);
     font-family: 'Inter', system-ui, sans-serif;
     display: flex; justify-content: center; align-items: center;
     min-height: 100vh; margin: 0; padding: 24px;
   }
-
   .card {
     width: 100%; max-width: 560px;
     background: var(--glass);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255,255,255,0.1);
     padding: 28px; border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
-
-  .header-row {
-    display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px;
-  }
-
-  h3 {
-    margin: 0; font-family: 'DM Serif Display', serif;
-    font-weight: 400; font-size: 22px; letter-spacing: 0.2px;
-  }
-
-  .badge {
-    font-size: 10px; color: var(--muted); border: 1px solid var(--border);
-    border-radius: 999px; padding: 4px 10px; letter-spacing: 0.04em;
-  }
-
-  .lang-row {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
-  }
-
+  .header-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  h3 { margin: 0; font-family: 'DM Serif Display', serif; font-weight: 400; font-size: 22px; }
+  .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+  .lang-row { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
   .lang-select-wrap { flex: 1; position: relative; }
-
   select.lang-select {
-    width: 100%; appearance: none;
-    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-    color: var(--text); padding: 10px 30px 10px 12px; border-radius: 10px;
-    font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
-    transition: border-color 0.2s ease;
+    width: 100%; appearance: none; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 12px; border-radius: 10px; font-size: 13px; cursor: pointer;
   }
-  select.lang-select:focus { border-color: var(--accent); }
-  select.lang-select option { background: #121826; color: var(--text); }
-
-  .lang-select-wrap::after {
-    content: '▾'; position: absolute; right: 10px; top: 50%;
-    transform: translateY(-50%); color: var(--muted); font-size: 11px; pointer-events: none;
-  }
-
-  .swap-btn {
-    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-    background: var(--accent-dim); border: none; color: var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: transform 0.35s ease, background 0.2s ease;
-    font-size: 14px; padding: 0;
-  }
-  .swap-btn:hover { background: var(--accent); color: var(--bg); }
-  .swap-btn.spin { transform: rotate(180deg); }
-
-  .field-label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between;
-  }
-
   textarea, .out {
-    width: 100%; min-height: 110px;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid var(--border);
-    color: var(--text); padding: 14px; border-radius: 12px;
-    font-size: 15px; outline: none; resize: vertical;
-    font-family: inherit; line-height: 1.5;
-    transition: border-color 0.2s ease;
+    width: 100%; min-height: 110px; background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border); color: var(--text); padding: 14px;
+    border-radius: 12px; font-size: 15px; outline: none; resize: vertical;
   }
-  textarea:focus { border-color: var(--accent); }
-
-  .out {
-    position: relative; white-space: pre-wrap; word-break: break-word;
-  }
-  .out.placeholder { color: var(--muted); }
-  .out.error { color: var(--danger); border-color: rgba(255,107,129,0.4); }
-
-  .charcount { font-variant-numeric: tabular-nums; }
-  .charcount.warn { color: var(--danger); }
-
-  .source-note {
-    font-size: 10px; color: var(--muted); margin-top: 4px; min-height: 14px;
-  }
-
-  .spinner {
-    display: inline-block; width: 14px; height: 14px;
-    border: 2px solid rgba(94,224,255,0.25); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.7s linear infinite;
-    vertical-align: middle; margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
   button.action {
     background: #222b3d; border: none; color: var(--accent);
-    padding: 9px 16px; border-radius: 8px; cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease; font-size: 12.5px;
-    font-weight: 500; font-family: inherit;
+    padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 12.5px;
   }
   button.action:hover { background: var(--accent); color: var(--bg); }
-  button.action:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.action.copied { background: #3ddc84; color: var(--bg); }
-
-  .history { margin-top: 22px; }
-  .history-head {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 8px;
-  }
-  .history-head strong { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
-  .clear-history {
-    background: none; border: none; color: var(--muted); font-size: 11px;
-    cursor: pointer; text-decoration: underline; font-family: inherit;
-  }
-  .clear-history:hover { color: var(--danger); }
-
-  ul#historyList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  ul#historyList li {
-    font-size: 12px; color: var(--muted);
-    background: rgba(0,0,0,0.2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 10px;
-    display: flex; align-items: baseline; gap: 6px; cursor: pointer;
-    transition: border-color 0.2s ease;
-  }
-  ul#historyList li:hover { border-color: var(--accent); }
-  ul#historyList li .orig { color: var(--text); }
-  ul#historyList li .arrow { color: var(--accent); flex-shrink: 0; }
-  ul#historyList li .pair { color: var(--muted); font-size: 10px; margin-left: auto; flex-shrink: 0; white-space: nowrap; }
-  .empty-hint { font-size: 12px; color: var(--muted); font-style: italic; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .swap-btn, .spinner, button.action { transition: none; animation: none; }
-  }
 </style>
 </head>
 <body>
 <div class="card">
   <div class="header-row">
-    <h3>Traductor</h3>
-    <span class="badge" id="badge">V1</span>
+    <h3>Traductor Pro</h3>
+    <span class="badge">Local Engine</span>
   </div>
 
   <div class="lang-row">
     <div class="lang-select-wrap">
-      <select class="lang-select" id="fromSelect" aria-label="Idioma de origen"></select>
+      <select class="lang-select" id="fromSelect"></select>
     </div>
-    <button class="swap-btn" id="swapBtn" title="Cambiar dirección" aria-label="Cambiar dirección de traducción">⇄</button>
+    <button class="action" id="swapBtn">⇄</button>
     <div class="lang-select-wrap">
-      <select class="lang-select" id="toSelect" aria-label="Idioma de destino"></select>
+      <select class="lang-select" id="toSelect"></select>
     </div>
   </div>
 
-  <div class="field-label">
-    <span>Texto original</span>
-    <span class="charcount" id="charcount">0 / 2000</span>
-  </div>
-  <textarea id="input" placeholder="Escribe algo para traducir..." maxlength="2000"></textarea>
-
-  <div class="field-label"><span>Traducción</span></div>
-  <div id="output" class="out placeholder">La traducción aparecerá aquí...</div>
-  <div class="source-note" id="sourceNote"></div>
+  <textarea id="input" placeholder="Escribe algo aquí..."></textarea>
+  <div style="margin: 15px 0;"><span>Traducción:</span></div>
+  <div id="output" class="out">La traducción aparecerá aquí al procesar...</div>
 
   <div class="actions">
-    <button class="action" id="copyBtn" onclick="copiarTexto()">📋 Copiar</button>
-    <button class="action" id="voiceBtn" onclick="reproducirVoz()">🔊 Escuchar</button>
-    <button class="action" id="clearBtn" onclick="limpiarTodo()">🗑️ Limpiar</button>
-  </div>
-
-  <div class="history">
-    <div class="history-head">
-      <strong>Historial</strong>
-      <button class="clear-history" id="clearHistoryBtn" onclick="borrarHistorial()">borrar todo</button>
-    </div>
-    <ul id="historyList"></ul>
-    <p class="empty-hint" id="emptyHint">Aún no hay traducciones guardadas.</p>
+    <button class="action" onclick="procesarTraduccion()">⚙️ Traducir Localmente</button>
+    <button class="action" onclick="limpiar()">🗑️ Limpiar</button>
   </div>
 </div>
 
-  // code: [nombre visible, locale de voz]
-  const LANGUAGES = {
-    es: ['Español', 'es-ES'],
-    en: ['Inglés', 'en-US'],
-    pt: ['Portugués', 'pt-PT'],
-    fr: ['Francés', 'fr-FR'],
-    de: ['Alemán', 'de-DE'],
-    it: ['Italiano', 'it-IT'],
-    nl: ['Holandés', 'nl-NL'],
-    ru: ['Ruso', 'ru-RU'],
-    zh: ['Chino', 'zh-CN'],
-    ja: ['Japonés', 'ja-JP'],
-    ko: ['Coreano', 'ko-KR'],
-    ar: ['Árabe', 'ar-SA'],
-    hi: ['Hindi', 'hi-IN'],
-    tr: ['Turco', 'tr-TR'],
-    pl: ['Polaco', 'pl-PL'],
-    sv: ['Sueco', 'sv-SE'],
-    da: ['Danés', 'da-DK'],
-    fi: ['Finlandés', 'fi-FI'],
-    el: ['Griego', 'el-GR'],
-    cs: ['Checo', 'cs-CZ'],
-    he: ['Hebreo', 'he-IL'],
-    hu: ['Húngaro', 'hu-HU'],
-    uk: ['Ucraniano', 'uk-UA'],
-    id: ['Indonesio', 'id-ID'],
-    vi: ['Vietnamita', 'vi-VN'],
-    fa: ['Persa', 'fa-IR'],
-    sk: ['Eslovaco', 'sk-SK'],
-    bg: ['Búlgaro', 'bg-BG'],
-    ga: ['Irlandés', 'ga-IE'],
-    th: ['Tailandés', 'th-TH'],
-  };
-
+<script>
+  const LANGUAGES = { es: 'Español', en: 'Inglés', fr: 'Francés' };
   const input = document.getElementById('input');
   const output = document.getElementById('output');
-  const charcount = document.getElementById('charcount');
-  const fromSelect = document.getElementById('fromSelect');
-  const toSelect = document.getElementById('toSelect');
-  const swapBtn = document.getElementById('swapBtn');
-  const copyBtn = document.getElementById('copyBtn');
-  const voiceBtn = document.getElementById('voiceBtn');
-  const historyList = document.getElementById('historyList');
-  const emptyHint = document.getElementById('emptyHint');
-  const sourceNote = document.getElementById('sourceNote');
-  const badge = document.getElementById('badge');
 
-  const MAX_CHARS = 2000;
-  const DEBOUNCE_MS = 600;
-  const HISTORY_KEY = 'traductorPro_historial';
-  const PREFS_KEY = 'traductorPro_prefs';
-  const MAX_HISTORY = 8;
-
-  let debounceTimer = null;
-  let activeController = null;
-  let history = [];
-
-  function poblarSelects() {
-    const codes = Object.keys(LANGUAGES);
-    [fromSelect, toSelect].forEach((sel) => {
-      sel.innerHTML = '';
-      codes.forEach((code) => {
+  function poblar() {
+    const selects = [document.getElementById('fromSelect'), document.getElementById('toSelect')];
+    selects.forEach(sel => {
+      Object.keys(LANGUAGES).forEach(code => {
         const opt = document.createElement('option');
-        opt.value = code;
-        opt.textContent = LANGUAGES[code][0];
+        opt.value = code; opt.textContent = LANGUAGES[code];
         sel.appendChild(opt);
       });
     });
   }
 
-  function cargarPrefs() {
-    let from = 'es', to = 'en';
-    try {
-      const raw = localStorage.getItem(PREFS_KEY);
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (LANGUAGES[p.from]) from = p.from;
-        if (LANGUAGES[p.to]) to = p.to;
-      }
-    } catch { /* sin prefs guardadas */ }
-    fromSelect.value = from;
-    toSelect.value = to;
+  function procesarTraduccion() {
+    const texto = input.value;
+    // AQUÍ es donde puedes añadir tu lógica local (ej: if/else, arrays de diccionarios)
+    // Sin API, no hay conexión externa.
+    output.textContent = "Simulación: El texto '" + texto + "' ha sido procesado localmente.";
   }
 
-  function guardarPrefs() {
-    try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ from: fromSelect.value, to: toSelect.value }));
-    } catch { /* almacenamiento no disponible */ }
-  }
+  function limpiar() { input.value = ''; output.textContent = '...'; }
 
-  function cargarHistorial() {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      history = raw ? JSON.parse(raw) : [];
-    } catch {
-      history = [];
-    }
-    renderHistorial();
-  }
-
-  function guardarHistorialEnStorage() {
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    } catch { /* almacenamiento no disponible, seguimos solo en memoria */ }
-  }
-
-  function renderHistorial() {
-    historyList.innerHTML = '';
-    emptyHint.style.display = history.length ? 'none' : 'block';
-    history.forEach((entry) => {
-      const li = document.createElement('li');
-      const fromName = LANGUAGES[entry.from] ? LANGUAGES[entry.from][0] : entry.from;
-      const toName = LANGUAGES[entry.to] ? LANGUAGES[entry.to][0] : entry.to;
-      li.innerHTML = `<span class="orig">${escapeHtml(entry.original)}</span><span class="arrow">→</span><span>${escapeHtml(entry.traducido)}</span><span class="pair">${fromName} → ${toName}</span>`;
-      li.title = 'Click para volver a cargar este texto';
-      li.addEventListener('click', () => {
-        input.value = entry.original;
-        fromSelect.value = entry.from;
-        toSelect.value = entry.to;
-        guardarPrefs();
-        output.textContent = entry.traducido;
-        output.classList.remove('placeholder', 'error');
-        actualizarContador();
-      });
-      historyList.appendChild(li);
-    });
-  }
-
-  function guardarEnHistorial(original, traducido) {
-    history.unshift({ original, traducido, from: fromSelect.value, to: toSelect.value });
-    history = history.slice(0, MAX_HISTORY);
-    guardarHistorialEnStorage();
-    renderHistorial();
-  }
-
-  function borrarHistorial() {
-    history = [];
-    guardarHistorialEnStorage();
-    renderHistorial();
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function actualizarContador() {
-    const len = input.value.length;
-    charcount.textContent = `${len} / ${MAX_CHARS}`;
-    charcount.classList.toggle('warn', len >= MAX_CHARS);
-  }
-
-  function mostrarCargando() {
-    output.classList.remove('placeholder', 'error');
-    output.innerHTML = '<span class="spinner"></span>Traduciendo...';
-    sourceNote.textContent = '';
-  }
-
-  function mostrarError(msg) {
-    output.classList.remove('placeholder');
-    output.classList.add('error');
-    output.textContent = msg;
-    sourceNote.textContent = '';
-  }
-
-  function mostrarPlaceholder() {
-    output.classList.remove('error');
-    output.classList.add('placeholder');
-    output.textContent = 'La traducción aparecerá aquí...';
-    sourceNote.textContent = '';
-  }
-
-  async function pedirTraduccion(mirrorUrl, text, source, target, signal) {
-    const res = await fetch(mirrorUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal,
-      body: JSON.stringify({ q: text, source, target, format: 'text' }),
-    });
-
-    if (!res.ok) {
-      let detail = '';
-      try {
-        const errData = await res.json();
-        detail = errData.error || '';
-      } catch { /* respuesta no era JSON */ }
-      throw new Error(detail || `Error HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    if (!data.translatedText) throw new Error('Respuesta vacía del servidor');
-    return data.translatedText;
-  }
-
-  async function traducir(text) {
-    if (fromSelect.value === toSelect.value) {
-      output.classList.remove('placeholder', 'error');
-      output.textContent = text;
-      sourceNote.textContent = '';
-      return;
-    }
-
-    if (activeController) activeController.abort();
-    activeController = new AbortController();
-
-    mostrarCargando();
-
-    let lastError = null;
-
-    for (let i = 0; i < MIRRORS.length; i++) {
-      try {
-        const translated = await pedirTraduccion(
-          MIRRORS[i],
-          text,
-          fromSelect.value,
-          toSelect.value,
-          activeController.signal
-        );
-        output.classList.remove('placeholder', 'error');
-        output.textContent = translated;
-        sourceNote.textContent = i === 0 ? '' : 'Servidor de respaldo en uso (el principal no respondió).';
-        guardarEnHistorial(text, translated);
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        lastError = err;
-        // probamos el siguiente mirror automáticamente
-      }
-    }
-
-    mostrarError(`No se pudo traducir: ${lastError ? lastError.message : 'todos los servidores fallaron'}. Probá de nuevo en un momento.`);
-  }
-
-  input.addEventListener('input', () => {
-    actualizarContador();
-    const text = input.value.trim();
-
-    clearTimeout(debounceTimer);
-
-    if (text.length === 0) {
-      if (activeController) activeController.abort();
-      mostrarPlaceholder();
-      return;
-    }
-    if (text.length < 2) return;
-
-    debounceTimer = setTimeout(() => traducir(text), DEBOUNCE_MS);
-  });
-
-  [fromSelect, toSelect].forEach((sel) => {
-    sel.addEventListener('change', () => {
-      guardarPrefs();
-      const text = input.value.trim();
-      if (text.length >= 2) traducir(text);
-    });
-  });
-
-  function copiarTexto() {
-    if (output.classList.contains('placeholder') || output.classList.contains('error')) return;
-    navigator.clipboard.writeText(output.textContent).then(() => {
-      const original = copyBtn.textContent;
-      copyBtn.textContent = '✅ Copiado';
-      copyBtn.classList.add('copied');
-      setTimeout(() => {
-        copyBtn.textContent = original;
-        copyBtn.classList.remove('copied');
-      }, 1500);
-    });
-  }
-
-  function reproducirVoz() {
-    if (output.classList.contains('placeholder') || output.classList.contains('error')) return;
-    window.speechSynthesis.cancel();
-    const msg = new SpeechSynthesisUtterance(output.textContent);
-    const locale = LANGUAGES[toSelect.value] ? LANGUAGES[toSelect.value][1] : 'en-US';
-    msg.lang = locale;
-    voiceBtn.disabled = true;
-    msg.onend = () => { voiceBtn.disabled = false; };
-    msg.onerror = () => { voiceBtn.disabled = false; };
-    window.speechSynthesis.speak(msg);
-  }
-
-  function limpiarTodo() {
-    input.value = '';
-    if (activeController) activeController.abort();
-    mostrarPlaceholder();
-    actualizarContador();
-    input.focus();
-  }
-
-  swapBtn.addEventListener('click', () => {
-    const prevFrom = fromSelect.value;
-    const prevTo = toSelect.value;
-    fromSelect.value = prevTo;
-    toSelect.value = prevFrom;
-    guardarPrefs();
-    swapBtn.classList.toggle('spin');
-
-    const currentOutput = output.textContent;
-    const hasValidOutput = !output.classList.contains('placeholder') && !output.classList.contains('error');
-
-    if (hasValidOutput) {
-      input.value = currentOutput;
-      actualizarContador();
-      traducir(currentOutput.trim());
-    }
-  });
-
-  poblarSelects();
-  cargarPrefs();
-  cargarHistorial();
-  actualizarContador();
+  poblar();
 </script>
 </body>
-</html> 
+</html>
